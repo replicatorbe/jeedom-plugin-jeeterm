@@ -1,0 +1,11 @@
+# Exclusions propres au plugin jeeterm, ajoutées à celles de deploy-plugin.sh.
+# Un motif rsync par ligne ; les lignes vides et celles commençant par # sont
+# ignorées par --exclude-from.
+
+# Les contrôles et essais ne servent qu'au développement : rien à faire dans la
+# racine web. (CONCEPTION.md est déjà exclu, comme tout *.md de la racine.)
+tests/
+
+# Caches Python produits en lançant les essais du démon depuis le dépôt.
+__pycache__/
+*.pyc

@@ -1,0 +1,36 @@
+xterm.js vendorisé pour JeeTerm (licence MIT, voir LICENSE)
+Source : https://registry.npmjs.org (archives npm officielles), récupéré le 2026-09-22
+
+Paquet                   Version  Fichier d'origine                 Fichier ici
+@xterm/xterm             6.0.0    lib/xterm.js (UMD), css/xterm.css xterm.js, xterm.css
+@xterm/addon-fit         0.11.0   lib/addon-fit.js (UMD)            addon-fit.js
+@xterm/addon-web-links   0.12.0   lib/addon-web-links.js (UMD)      addon-web-links.js
+@xterm/addon-search      0.16.0   lib/addon-search.js (UMD)         addon-search.js
+@xterm/addon-unicode11   0.9.0    lib/addon-unicode11.js (UMD)      addon-unicode11.js
+
+SHA-256 des archives npm :
+908e66e04af6c8dc6b00dd3b54de088e2e81e5ed866284fd6c2fb3c2d1c7a3f6  xterm-6.0.0.tgz
+26003b4517a132b64e4ff228fd88a5fda3fff5e606c76093f6dcff772e9ecec0  addon-fit-0.11.0.tgz
+bf463cfff1af4bb1903509830c62ed06bcd0589039f15ea5fba71d7bae5a86da  addon-web-links-0.12.0.tgz
+e9d0795c72f4de749ed996ad7868f0738b44f37cee1e483be81977cefd7f4f81  addon-search-0.16.0.tgz
+b665667792f916873fe946ba98cc98a1a742af08e163fb66e1c0809c120ca42e  addon-unicode11-0.9.0.tgz
+
+Seule modification : suppression de la dernière ligne « //# sourceMappingURL=… »
+(les .map ne sont pas livrés ; la ligne provoquerait une requête 404 dans
+les outils de développement du navigateur).
+
+Globales exposées (chargement par <script>) :
+  window.Terminal                    (xterm.js copie ses exports dans globalThis)
+  window.FitAddon.FitAddon
+  window.WebLinksAddon.WebLinksAddon
+  window.SearchAddon.SearchAddon
+  window.Unicode11Addon.Unicode11Addon
+
+Les deux derniers utilisent des API qu'xterm classe « proposées »
+(term.unicode, registerDecoration) : le terminal est créé avec
+allowProposedApi: true.
+
+Mise à jour : télécharger les cinq archives
+  https://registry.npmjs.org/@xterm/<paquet>/-/<paquet>-<version>.tgz
+et refaire la même extraction. Prendre les versions d'addons publiées en même
+temps que la version de xterm retenue (même série de publication).

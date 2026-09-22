@@ -1,0 +1,621 @@
+/* JeeTerm : page du terminal.
+ *
+ * La hauteur de .jeeterm-root est posée par jeeterm.js (hauteur de la fenêtre
+ * moins la position du bloc), parce que la barre de Jeedom au-dessus n'a pas
+ * une hauteur fixe. Ici : une colonne flex, barre en haut, terminal qui prend
+ * tout le reste.
+ *
+ * Couleurs : variables du thème Jeedom (core/themes/core2019_*), avec une
+ * valeur de repli si une variable manque.
+ */
+
+.jeeterm-root {
+  position: relative; /* repère des panneaux (réglages, commandes) */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 240px;
+  height: calc(100vh - 80px); /* remplacée par jeeterm.js dès le chargement */
+  padding: 6px 0 0 0;
+  gap: 6px;
+}
+
+.jeeterm-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 6px;
+  border-radius: 4px;
+  background-color: var(--form-bg-color, rgba(128, 128, 128, 0.12));
+  color: var(--txt-color, inherit);
+}
+
+.jeeterm-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.jeeterm-toolbar .btn-group {
+  margin: 0;
+}
+
+/* Boutons à droite de la barre. */
+.jeeterm-toolbar-end {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.jeeterm-status {
+  display: inline-block;
+  min-width: 90px;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Titre posé par le shell : prend la place libre, coupé avec « … ». */
+.jeeterm-title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.jeeterm-root[data-state="off"] .jeeterm-title {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.jeeterm-fontsize {
+  min-width: 52px;
+  cursor: default;
+  pointer-events: none;
+}
+
+.jeeterm-keys .jeeterm-key {
+  min-width: 38px;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Pas de sélection ni de menu contextuel au toucher long, pas de délai de
+   double-tap sur les boutons. */
+.jeeterm-toolbar .btn,
+.jeeterm-paste .btn {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* Modificateur collant enclenché (Ctrl ou Alt), touches spéciales affichées. */
+.jeeterm-keys .jeeterm-modifier.active,
+#bt_jeetermToggleKeys.active,
+#bt_jeetermSearch.active,
+#bt_jeetermSettings.active,
+#bt_jeetermSnippets.active {
+  background-color: var(--logo-primary-color, #94ca02) !important;
+  border-color: var(--logo-primary-color, #94ca02) !important;
+  color: #fff !important;
+}
+
+.jeeterm-search-input {
+  flex: 1 1 200px;
+  min-width: 120px;
+  max-width: 420px;
+  width: auto !important;
+}
+
+.jeeterm-search-count {
+  min-width: 60px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.jeeterm-error {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jeeterm-error-actions {
+  margin-top: 6px;
+}
+
+.jeeterm-paste {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(--form-bg-color, rgba(128, 128, 128, 0.12));
+}
+
+.jeeterm-paste-label {
+  margin: 0;
+  font-weight: normal;
+}
+
+.jeeterm-paste-text {
+  font-family: monospace;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.jeeterm-paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Le fond reprend celui du thème xterm (posé en ligne par jeeterm.js) pour
+   que la marge intérieure ne dessine pas un cadre d'une autre couleur.
+   box-sizing: content-box est indispensable : Bootstrap met tout en
+   border-box, et le module fit d'xterm lit la hauteur calculée de ce bloc
+   comme place disponible ; en border-box, elle inclurait la marge intérieure
+   et la dernière ligne serait rognée. */
+.jeeterm-terminal {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  box-sizing: content-box;
+  padding: 4px 0 0 6px;
+  border-radius: 4px;
+  background-color: #1e1e1e;
+}
+
+.jeeterm-terminal .xterm {
+  height: 100%;
+}
+
+/* xterm 6 fait défiler un élément à lui (.xterm-scrollable-element), mais
+   xterm.css garde pour l'ancien .xterm-viewport un fond noir et une barre de
+   défilement native : visibles dans la bande de moins d'une ligne sous la
+   dernière ligne, en noir quel que soit le thème. On les neutralise, le fond
+   du bloc (couleur du thème) apparaît à la place. */
+.jeeterm-terminal .xterm .xterm-viewport {
+  background-color: transparent !important;
+  overflow: hidden !important;
+}
+
+/* Plein écran natif (requestFullscreen) ou de repli (iPhone : pas d'API
+   plein écran sur un élément) : même rendu. Règles séparées : un sélecteur
+   inconnu du navigateur invaliderait toute la liste. */
+.jeeterm-root:fullscreen {
+  height: 100% !important;
+  width: 100%;
+  padding: 6px;
+  background-color: rgb(var(--panel-bg-color, 34, 34, 34));
+}
+
+.jeeterm-root:-webkit-full-screen {
+  height: 100% !important;
+  width: 100%;
+  padding: 6px;
+  background-color: rgb(var(--panel-bg-color, 34, 34, 34));
+}
+
+.jeeterm-root.jeeterm-pseudo-fullscreen {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2000;
+  height: auto !important;
+  width: auto;
+  padding: 6px;
+  padding-top: max(6px, env(safe-area-inset-top));
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  background-color: rgb(var(--panel-bg-color, 34, 34, 34));
+}
+
+/* Thème choisi (autre que « Jeedom ») : en plein écran, tout le fond prend
+   la couleur du terminal ; la barre garde le style de Jeedom. */
+.jeeterm-root.jeeterm-themed:fullscreen {
+  background-color: var(--jeeterm-screen-bg, #000);
+}
+
+.jeeterm-root.jeeterm-themed:-webkit-full-screen {
+  background-color: var(--jeeterm-screen-bg, #000);
+}
+
+.jeeterm-root.jeeterm-themed.jeeterm-pseudo-fullscreen {
+  background-color: var(--jeeterm-screen-bg, #000);
+}
+
+/* Thème sombre sur une page claire : un liseré, pour que le terminal ait
+   l'air d'une fenêtre et non d'un trou. */
+.jeeterm-root[data-scheme="dark"] .jeeterm-terminal {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- Calques au-dessus du terminal ----------
+   Tous transparents à la souris : sélection, molette, liens et calcul de
+   taille (module fit, qui ne mesure que le bloc) n'en voient rien. Au-dessus
+   des calques d'xterm (z-index 5 à 11). */
+.jeeterm-crt-layer,
+.jeeterm-bell-layer,
+.jeeterm-hud {
+  position: absolute;
+  pointer-events: none;
+}
+
+.jeeterm-crt-layer,
+.jeeterm-bell-layer {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: none;
+  border-radius: inherit;
+}
+
+/* Bulle : taille après redimensionnement, « Copié ». */
+.jeeterm-hud {
+  top: 8px;
+  right: 14px;
+  z-index: 32;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 18px;
+  color: #fff;
+  background-color: rgba(20, 20, 20, 0.78);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.jeeterm-hud.jeeterm-hud-on {
+  opacity: 1;
+  transition: none;
+}
+
+/* Cloche visuelle : un éclair bref sur tout le terminal. */
+.jeeterm-bell-layer {
+  z-index: 31;
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.jeeterm-root[data-scheme="light"] .jeeterm-bell-layer {
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.jeeterm-root.jeeterm-bell-on .jeeterm-bell-layer {
+  display: block;
+  animation: jeeterm-bell 0.25s ease-out forwards;
+}
+
+@keyframes jeeterm-bell {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ---------- Effet écran cathodique ----------
+   Lignes de balayage, vignettage et léger halo autour du texte. Le halo est
+   un text-shadow des lignes du rendu DOM d'xterm (le seul rendu livré) :
+   currentColor prend la couleur de chaque caractère. */
+.jeeterm-root.jeeterm-crt .jeeterm-terminal {
+  border-radius: 10px;
+}
+
+.jeeterm-root.jeeterm-crt .jeeterm-crt-layer {
+  display: block;
+  z-index: 30;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.5) 100%),
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.28) 2px, rgba(0, 0, 0, 0.28) 3px);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+  animation: jeeterm-flicker 0.12s steps(2) infinite;
+}
+
+.jeeterm-root.jeeterm-crt .xterm-rows {
+  text-shadow: 0 0 1px currentColor, 0 0 6px currentColor;
+}
+
+/* Halo plus discret là où color-mix() existe. */
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+  .jeeterm-root.jeeterm-crt .xterm-rows {
+    text-shadow: 0 0 1px color-mix(in srgb, currentColor 80%, transparent), 0 0 9px color-mix(in srgb, currentColor 55%, transparent);
+  }
+}
+
+@keyframes jeeterm-flicker {
+  from { opacity: 0.94; }
+  to { opacity: 1; }
+}
+
+/* Mouvement réduit demandé : ni scintillement, ni fondu de la bulle ; la
+   cloche devient un simple cadre. */
+@media (prefers-reduced-motion: reduce) {
+  .jeeterm-root.jeeterm-crt .jeeterm-crt-layer {
+    animation: none;
+  }
+  .jeeterm-hud {
+    transition: none;
+  }
+  .jeeterm-root.jeeterm-bell-on .jeeterm-bell-layer {
+    animation: none;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 3px var(--logo-primary-color, #94ca02);
+  }
+}
+
+/* ---------- Panneaux (réglages, commandes rapides) ---------- */
+
+.jeeterm-panel {
+  position: absolute;
+  z-index: 40;
+  box-sizing: border-box;
+  width: 340px;
+  max-width: calc(100% - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 10px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background-color: var(--bg-modal-color, var(--form-bg-color, #f5f5f5));
+  color: var(--txt-color, inherit);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+}
+
+/* Commandes rapides : seule la liste défile, l'ajout reste à portée. */
+.jeeterm-snippets {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jeeterm-snippets > * {
+  flex: 0 0 auto;
+}
+
+.jeeterm-snippets > .jeeterm-snippet-list {
+  flex: 1 1 auto;
+  min-height: 60px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.jeeterm-panel-title {
+  margin: 0 0 8px 0;
+  font-weight: bold;
+}
+
+.jeeterm-field {
+  margin: 0 0 8px 0;
+}
+
+.jeeterm-field > label,
+.jeeterm-field-label {
+  display: block;
+  margin: 0 0 3px 0;
+  font-weight: normal;
+  opacity: 0.85;
+}
+
+.jeeterm-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.jeeterm-inline > .jeeterm-field-label {
+  display: inline-block;
+  margin: 0;
+}
+
+.jeeterm-panel select.form-control {
+  width: 100%;
+}
+
+.jeeterm-panel select.jeeterm-narrow {
+  width: auto !important;
+  min-width: 90px;
+  flex: 0 1 auto;
+}
+
+.jeeterm-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jeeterm-check > label {
+  display: inline;
+  margin: 0;
+  font-weight: normal;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.jeeterm-check > input {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.jeeterm-font-missing {
+  color: #888;
+}
+
+.jeeterm-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jeeterm-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+.jeeterm-hint {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.jeeterm-xs-only {
+  display: none;
+}
+
+.jeeterm-mono,
+.jeeterm-snippet-cmd {
+  font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+
+.jeeterm-snippet-list {
+  list-style: none;
+  margin: 6px 0 0 0;
+  padding: 0;
+}
+
+.jeeterm-snippet {
+  display: flex;
+  align-items: stretch;
+  border-radius: 4px;
+}
+
+.jeeterm-snippet:hover,
+.jeeterm-snippet:focus-within {
+  background-color: rgba(128, 128, 128, 0.16);
+}
+
+/* Boutons nus : pas de .btn, le style de Jeedom en ferait des pavés. */
+.jeeterm-snippet-run,
+.jeeterm-snippet-del {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.jeeterm-snippet-run {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.jeeterm-snippet-label {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jeeterm-snippet-cmd {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0;
+  font-size: 12px;
+  color: var(--logo-primary-color, #6a9a00);
+  background: transparent;
+}
+
+.jeeterm-snippet-del {
+  flex: 0 0 auto;
+  width: 30px;
+  opacity: 0.35;
+}
+
+.jeeterm-snippet:hover .jeeterm-snippet-del,
+.jeeterm-snippet-del:focus {
+  opacity: 0.8;
+}
+
+.jeeterm-snippet-del:hover {
+  color: #d9534f;
+  opacity: 1;
+}
+
+.jeeterm-snippet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+.jeeterm-snippet-form .jeeterm-invalid {
+  border-color: #d9534f !important;
+  box-shadow: 0 0 0 1px #d9534f;
+}
+
+.jeeterm-panel .btn {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+@media (max-width: 767px) {
+  .jeeterm-hide-xs {
+    display: none;
+  }
+  .jeeterm-xs-only {
+    display: flex;
+  }
+  .jeeterm-toolbar {
+    padding: 4px;
+  }
+  .jeeterm-status {
+    min-width: 0;
+  }
+  .jeeterm-keys .jeeterm-key {
+    min-width: 34px;
+    padding: 6px 6px;
+  }
+  .jeeterm-terminal {
+    padding-left: 2px;
+  }
+}
+
+/* Écran tactile : touches spéciales plus faciles à viser ; croix des
+   commandes toujours visibles (pas de survol). */
+@media (pointer: coarse) {
+  .jeeterm-keys .jeeterm-key {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .jeeterm-snippet-del {
+    width: 40px;
+    opacity: 0.6;
+  }
+  .jeeterm-snippet-run {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+}
