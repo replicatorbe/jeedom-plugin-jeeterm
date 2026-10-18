@@ -44,6 +44,10 @@ import urllib.parse
 
 WS_GUID = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 TOKEN_RE = re.compile(r'^[0-9a-fA-F]{64}$')
+# Jeton bien formé mais jamais valide, envoyé par la sonde du plugin
+# (jeeterm::probeTunnel) : /register le refuse, il ne peut donc ouvrir aucun shell.
+PROBE_TOKEN = '0' * 64
+LOOPBACK = ('127.0.0.1', '::1', '::ffff:127.0.0.1')
 HEADER_NAME_RE = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 # En-têtes qui ne doivent figurer qu'une fois : un doublon est une tentative
 # de contournement (deux jetons, deux hôtes…), la requête est refusée.
@@ -195,7 +199,22 @@ def local_peer(writer, headers):
     """Seul PHP, en local et en direct, parle au démon : une requête relayée par
     Apache porte un X-Forwarded-For."""
     peer = writer.get_extra_info('peername') or ('',)
-    return peer[0] in ('127.0.0.1', '::1', '::ffff:127.0.0.1') and 'x-forwarded-for' not in headers
+    return peer[0] in LOOPBACK and 'x-forwarded-for' not in headers
+
+
+def client_ip(headers):
+    """Adresse du client vue par Apache : la dernière du X-Forwarded-For, celle
+    qu'Apache ajoute lui-même ; les précédentes viennent du client."""
+    return headers.get('x-forwarded-for', '?').split(',')[-1].strip()
+
+
+def own_probe(writer, headers, token):
+    """Sonde du plugin : jeton sentinelle, venu de la boucle locale, en direct ou
+    relayé par Apache depuis la boucle locale. Le User-Agent, falsifiable, n'entre
+    pas en compte."""
+    peer = writer.get_extra_info('peername') or ('',)
+    return (token == PROBE_TOKEN and peer[0] in LOOPBACK
+            and ('x-forwarded-for' not in headers or client_ip(headers) in LOOPBACK))
 
 
 def apikey_ok(state, headers):
@@ -252,7 +271,7 @@ async def close_writer(writer, timeout=2):
 
 def register(state, writer, headers):
     token = headers.get('x-jeeterm-token', '')
-    if not TOKEN_RE.match(token):
+    if not TOKEN_RE.match(token) or token == PROBE_TOKEN:
         http_response(writer, 400)
         return
     if state.stopping.is_set():
@@ -329,10 +348,13 @@ async def handle_ws(state, reader, writer, headers, query):
             or headers.get('sec-websocket-version') != '13' or not valid_ws_key(key)):
         http_response(writer, 400)
         return
-    info = state.take_token(query.get('t', [''])[0])
+    token = query.get('t', [''])[0]
+    info = state.take_token(token)
     if info is None:
-        log('audit', 'WebSocket refusé (IP %s) : jeton absent, invalide, expiré ou déjà utilisé'
-            % clean(headers.get('x-forwarded-for', '?').split(',')[-1].strip(), 64))
+        # La sonde du plugin, refusée exprès, ne doit pas noyer les vrais refus.
+        log('debug' if own_probe(writer, headers, token) else 'audit',
+            'WebSocket refusé (IP %s) : jeton absent, invalide, expiré ou déjà utilisé'
+            % clean(client_ip(headers), 64))
         http_response(writer, 403)
         return
     check_origin(headers)

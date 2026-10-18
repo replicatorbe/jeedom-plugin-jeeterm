@@ -113,7 +113,7 @@ class Daemon:
 class WSClient:
     """Client WebSocket minimal : trames masquées, comme un navigateur."""
 
-    def __init__(self, port, token, cols=None, rows=None):
+    def __init__(self, port, token, cols=None, rows=None, xff=None):
         self.sock = socket.create_connection(('127.0.0.1', port), timeout=5)
         query = '/ws' + ('?t=' + token if token is not None else '')
         if cols:
@@ -121,8 +121,8 @@ class WSClient:
         key = base64.b64encode(os.urandom(16)).decode()
         self.sock.sendall(('GET %s HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\n'
                            'Connection: Upgrade\r\nSec-WebSocket-Key: %s\r\n'
-                           'Sec-WebSocket-Version: 13\r\nOrigin: http://localhost\r\n\r\n'
-                           % (query, key)).encode())
+                           'Sec-WebSocket-Version: 13\r\nOrigin: http://localhost\r\n%s\r\n'
+                           % (query, key, 'X-Forwarded-For: %s\r\n' % xff if xff else '')).encode())
         head = b''
         while b'\r\n\r\n' not in head:
             chunk = self.sock.recv(1)
@@ -232,8 +232,8 @@ def shell_pid(client):
     raise AssertionError('pid du shell introuvable')
 
 
-def ws_status(port, token):
-    c = WSClient(port, token)
+def ws_status(port, token, xff=None):
+    c = WSClient(port, token, xff=xff)
     c.sock.close()
     return c.status
 
@@ -273,6 +273,8 @@ class DaemonTest(unittest.TestCase):
         self.assertEqual(self.d.register(**{'X-Forwarded-For': '192.0.2.9'})[0], 403)
         self.assertEqual(self.d.register('abc')[0], 400)
         self.assertEqual(self.d.register('z' * 64)[0], 400)
+        # Le jeton de la sonde ne doit jamais devenir valide.
+        self.assertEqual(self.d.register('0' * 64)[0], 400)
         self.assertEqual(self.d.request('/nimporte')[0], 404)
 
     def test_ws_refused(self):
@@ -384,6 +386,25 @@ class SpecialDaemonTest(unittest.TestCase):
         self.assertIn('[AUDIT] : Session fermée', text)
         self.assertIn('[AUDIT] : WebSocket refusé', text)
         self.assertNotIn('[DEBUG]', text)
+
+    def test_own_probe_not_audited(self):
+        # La sonde du plugin (jeton sentinelle depuis la boucle locale) reste
+        # refusée mais sort de l'audit ; tout autre refus y reste.
+        d = self.daemon(loglevel='error')
+        self.assertEqual(ws_status(d.port, '0' * 64), 403)
+        self.assertEqual(ws_status(d.port, '0' * 64, xff='127.0.0.1'), 403)
+        self.assertEqual(ws_status(d.port, '0' * 64, xff='::1'), 403)
+        time.sleep(0.3)
+        self.assertNotIn('WebSocket refusé', d.logtext())
+        self.assertEqual(ws_status(d.port, '0' * 64, xff='192.0.2.9'), 403)
+        self.assertEqual(ws_status(d.port, '0' * 64, xff='127.0.0.1, 192.0.2.8'), 403)
+        self.assertEqual(ws_status(d.port, '1' * 64, xff='127.0.0.1'), 403)
+        time.sleep(0.3)
+        text = d.logtext()
+        self.assertIn('[AUDIT] : WebSocket refusé (IP 192.0.2.9)', text)
+        self.assertIn('[AUDIT] : WebSocket refusé (IP 192.0.2.8)', text)
+        self.assertIn('[AUDIT] : WebSocket refusé (IP 127.0.0.1)', text)
+        self.assertEqual(text.count('WebSocket refusé'), 3)
 
     def test_idle_timeout(self):
         d = self.daemon(idle_timeout=2)

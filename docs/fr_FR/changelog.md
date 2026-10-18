@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3
+
+- Les sondes du diagnostic et du contrôle de santé, refusées exprès par le
+  démon, ne remplissent plus le journal d'audit : venues de la boucle locale
+  avec le jeton sentinelle, elles passent en debug. Tout autre refus de
+  WebSocket reste tracé en audit, et le jeton sentinelle ne peut plus être
+  enregistré.
+
 ## 0.2
 
 - Bannière d'accueil à l'ouverture du terminal : système, version de Jeedom,

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3
+
+- The diagnostic and health-check probes, deliberately refused by the daemon,
+  no longer fill the audit log: coming from the loopback with the sentinel
+  token, they are logged at debug level. Every other WebSocket refusal is still
+  audited, and the sentinel token can no longer be registered.
+
 ## 0.2
 
 - Welcome banner when the terminal opens: system, Jeedom version, uptime, load,

@@ -1,7 +1,7 @@
 {
     "id": "jeeterm",
     "name": "JeeTerm",
-    "pluginVersion": "0.2",
+    "pluginVersion": "0.3",
     "description": {
         "fr_FR": "Un vrai terminal interactif dans l'interface de Jeedom, à la manière du module Terminal de Home Assistant. Le shell tourne sur la machine Jeedom et s'affiche dans le navigateur : couleurs, raccourcis clavier, redimensionnement, éditeurs plein écran et session tmux persistante en option. Réservé aux administrateurs.",
         "en_US": "A real interactive terminal inside the Jeedom interface, much like the Home Assistant Terminal add-on. The shell runs on the Jeedom host and is displayed in the browser: colours, keyboard shortcuts, resizing, full-screen editors and an optional persistent tmux session. Restricted to administrators."
